@@ -485,7 +485,6 @@ body {
 .game-item.in-progress {
     border-left: 4px solid var(--warning-color);
 }
-/* Добавьте в css/style.css */
 
 .game-item.clickable {
     cursor: pointer;
@@ -507,7 +506,6 @@ body {
     transform: translateY(0);
 }
 
-/* Стили для статусов игр */
 .game-item.won {
     border-left: 4px solid var(--success-color);
 }
