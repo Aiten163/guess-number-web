@@ -1,23 +1,13 @@
 class Database {
     constructor() {
         this.dbName = 'GuessNumberDB';
-        this.dbVersion = 1;
+        this.dbVersion = 2;
         this.db = null;
     }
 
     async init() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, this.dbVersion);
-
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => {
-                this.db = request.result;
-                resolve(this.db);
-            };
-
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-
+        this.db = await idb.openDB(this.dbName, this.dbVersion, {
+            upgrade(db, oldVersion, newVersion) {
                 if (!db.objectStoreNames.contains('games')) {
                     const gamesStore = db.createObjectStore('games', {
                         keyPath: 'id',
@@ -27,6 +17,7 @@ class Database {
                     gamesStore.createIndex('isCompleted', 'isCompleted', { unique: false });
                     gamesStore.createIndex('isWon', 'isWon', { unique: false });
                     gamesStore.createIndex('startTime', 'startTime', { unique: false });
+                    gamesStore.createIndex('endTime', 'endTime', { unique: false });
                 }
 
                 if (!db.objectStoreNames.contains('attempts')) {
@@ -37,154 +28,92 @@ class Database {
                     attemptsStore.createIndex('gameId', 'gameId', { unique: false });
                     attemptsStore.createIndex('attemptNumber', 'attemptNumber', { unique: false });
                 }
-            };
+            }
         });
+        return this.db;
     }
 
     async saveGame(gameData) {
-        const transaction = this.db.transaction(['games'], 'readwrite');
-        const store = transaction.objectStore('games');
-
-        return new Promise((resolve, reject) => {
-            const request = store.add({
-                playerName: gameData.playerName,
-                secretNumber: gameData.secretNumber,
-                maxNumber: gameData.maxNumber,
-                maxAttempts: gameData.maxAttempts,
-                isCompleted: false,
-                isWon: false,
-                attemptsCount: 0,
-                startTime: new Date().toISOString(),
-                endTime: null
-            });
-
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+        const id = await this.db.add('games', {
+            playerName: gameData.playerName,
+            secretNumber: gameData.secretNumber,
+            maxNumber: gameData.maxNumber,
+            maxAttempts: gameData.maxAttempts,
+            isCompleted: false,
+            isWon: false,
+            attemptsCount: 0,
+            startTime: new Date().toISOString(),
+            endTime: null
         });
+        return id;
     }
 
     async saveAttempt(attemptData) {
-        const transaction = this.db.transaction(['attempts'], 'readwrite');
-        const store = transaction.objectStore('attempts');
-
-        return new Promise((resolve, reject) => {
-            const request = store.add({
-                gameId: attemptData.gameId,
-                attemptNumber: attemptData.attemptNumber,
-                guess: attemptData.guess,
-                result: attemptData.result,
-                attemptTime: new Date().toISOString()
-            });
-
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+        const id = await this.db.add('attempts', {
+            gameId: attemptData.gameId,
+            attemptNumber: attemptData.attemptNumber,
+            guess: attemptData.guess,
+            result: attemptData.result,
+            attemptTime: new Date().toISOString()
         });
+        return id;
     }
 
     async completeGame(gameId, isWon, attemptsCount) {
-        const transaction = this.db.transaction(['games'], 'readwrite');
-        const store = transaction.objectStore('games');
-
-        return new Promise((resolve, reject) => {
-            const getRequest = store.get(gameId);
-
-            getRequest.onsuccess = () => {
-                const game = getRequest.result;
-                if (game) {
-                    game.isCompleted = true;
-                    game.isWon = isWon;
-                    game.attemptsCount = attemptsCount;
-                    game.endTime = new Date().toISOString();
-
-                    const updateRequest = store.put(game);
-                    updateRequest.onsuccess = () => resolve();
-                    updateRequest.onerror = () => reject(updateRequest.error);
-                } else {
-                    reject(new Error('Game not found'));
-                }
-            };
-
-            getRequest.onerror = () => reject(getRequest.error);
-        });
+        const game = await this.db.get('games', gameId);
+        if (game) {
+            game.isCompleted = true;
+            game.isWon = isWon;
+            game.attemptsCount = attemptsCount;
+            game.endTime = new Date().toISOString();
+            await this.db.put('games', game);
+        } else {
+            throw new Error('Game not found');
+        }
     }
 
     async getAllGames() {
-        const transaction = this.db.transaction(['games'], 'readonly');
-        const store = transaction.objectStore('games');
-        const index = store.index('startTime');
-
-        return new Promise((resolve, reject) => {
-            const request = index.openCursor(null, 'prev');
-            const games = [];
-
-            request.onsuccess = () => {
-                const cursor = request.result;
-                if (cursor) {
-                    games.push(cursor.value);
-                    cursor.continue();
-                } else {
-                    resolve(games);
-                }
-            };
-
-            request.onerror = () => reject(request.error);
-        });
+        return await this.db.getAllFromIndex('games', 'startTime');
     }
 
     async getWonGames() {
-        const transaction = this.db.transaction(['games'], 'readonly');
-        const store = transaction.objectStore('games');
-        const index = store.index('isWon');
-
-        return new Promise((resolve, reject) => {
-            const request = index.getAll(1);
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
+        return await this.db.getAllFromIndex('games', 'isWon', 1);
     }
 
     async getLostGames() {
-        const transaction = this.db.transaction(['games'], 'readonly');
-        const store = transaction.objectStore('games');
-
-        return new Promise((resolve, reject) => {
-            const request = store.getAll();
-            request.onsuccess = () => {
-                const games = request.result.filter(game =>
-                    game.isCompleted && !game.isWon
-                );
-                resolve(games);
-            };
-            request.onerror = () => reject(request.error);
-        });
+        const games = await this.db.getAll('games');
+        return games.filter(game => game.isCompleted && !game.isWon);
     }
 
     async getGameAttempts(gameId) {
-        const transaction = this.db.transaction(['attempts'], 'readonly');
-        const store = transaction.objectStore('attempts');
-        const index = store.index('gameId');
-
-        return new Promise((resolve, reject) => {
-            const request = index.getAll(gameId);
-            request.onsuccess = () => {
-                const attempts = request.result.sort((a, b) =>
-                    a.attemptNumber - b.attemptNumber
-                );
-                resolve(attempts);
-            };
-            request.onerror = () => reject(request.error);
-        });
+        const attempts = await this.db.getAllFromIndex('attempts', 'gameId', gameId);
+        return attempts.sort((a, b) => a.attemptNumber - b.attemptNumber);
     }
 
     async getGameById(gameId) {
-        const transaction = this.db.transaction(['games'], 'readonly');
-        const store = transaction.objectStore('games');
+        return await this.db.get('games', gameId);
+    }
 
-        return new Promise((resolve, reject) => {
-            const request = store.get(gameId);
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
+    async deleteGame(gameId) {
+        const tx = this.db.transaction(['games', 'attempts'], 'readwrite');
+
+        const attemptsIndex = tx.objectStore('attempts').index('gameId');
+        let cursor = await attemptsIndex.openCursor(gameId);
+        while (cursor) {
+            await cursor.delete();
+            cursor = await cursor.continue();
+        }
+
+        await tx.objectStore('games').delete(gameId);
+
+        await tx.done;
+    }
+
+    async clearAllGames() {
+        const tx = this.db.transaction(['games', 'attempts'], 'readwrite');
+        await tx.objectStore('games').clear();
+        await tx.objectStore('attempts').clear();
+        await tx.done;
     }
 
     async getPlayerStats() {

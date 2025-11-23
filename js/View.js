@@ -149,14 +149,13 @@ class View {
             const statusClass = game.isCompleted ?
                 (game.isWon ? 'won' : 'lost') :
                 'in-progress';
-
             html += `
-                <div class="game-item ${statusClass}" data-game-id="${game.id}">
-                    <strong>ID: ${game.id}</strong> | Игрок: ${game.playerName}<br>
-                    Число: ${game.secretNumber} | Попыток: ${game.attemptsCount}/${game.maxAttempts}<br>
-                    Статус: ${status} | Дата: ${new Date(game.startTime).toLocaleString()}
-                </div>
-            `;
+            <div class="game-item ${statusClass} clickable" data-game-id="${game.id}">
+                <strong>ID: ${game.id}</strong> | Игрок: ${game.playerName}<br>
+                Число: ${game.secretNumber} | Попыток: ${game.attemptsCount}/${game.maxAttempts}<br>
+                Статус: ${status} | Дата: ${new Date(game.startTime).toLocaleString()}
+            </div>
+        `;
         });
 
         html += '</div>';
@@ -207,53 +206,6 @@ class View {
         container.innerHTML = html;
     }
 
-    static showReplay(game, attempts) {
-        const container = document.getElementById('replay-content');
-        if (!container) return;
-
-        if (!game) {
-            container.innerHTML = '<p class="message error">Игра с указанным ID не найдена.</p>';
-            return;
-        }
-
-        let html = `
-            <div class="replay-info">
-                <h3>Повтор игры ID: ${game.id}</h3>
-                <p>Игрок: ${game.playerName}</p>
-                <p>Загаданное число: ${game.secretNumber}</p>
-                <p>Максимальное число: ${game.maxNumber}</p>
-                <p>Максимальное количество попыток: ${game.maxAttempts}</p>
-                <p>Результат: ${game.isWon ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ'}</p>
-                <p>Количество попыток: ${game.attemptsCount}</p>
-            </div>
-            <div class="replay-attempts">
-                <h4>Ход игры:</h4>
-        `;
-
-        attempts.forEach(attempt => {
-            let resultText = '';
-            switch (attempt.result) {
-                case 'win':
-                    resultText = 'ПОБЕДА! Число угадано!';
-                    break;
-                case 'greater':
-                    resultText = 'Загаданное число БОЛЬШЕ';
-                    break;
-                case 'less':
-                    resultText = 'Загаданное число МЕНЬШЕ';
-                    break;
-            }
-
-            html += `
-                <div class="attempt-item">
-                    Попытка ${attempt.attemptNumber}: ${attempt.guess} - ${resultText}
-                </div>
-            `;
-        });
-
-        html += '</div>';
-        container.innerHTML = html;
-    }
 
     static showError(message) {
         alert(`Ошибка: ${message}`);
@@ -281,5 +233,101 @@ class View {
                 }
             });
         });
+    }
+    static showReplayScreen() {
+        this.showScreen('replay-screen');
+    }
+
+    static showReplay(game, attempts) {
+        const container = document.getElementById('replay-content');
+        if (!container) return;
+
+        if (!game) {
+            container.innerHTML = '<p class="message error">Игра с указанным ID не найдена.</p>';
+            return;
+        }
+
+        let html = `
+            <div class="replay-info">
+                <h3>Повтор игры ID: ${game.id}</h3>
+                <p>Игрок: ${game.playerName}</p>
+                <p>Загаданное число: ${game.secretNumber}</p>
+                <p>Максимальное число: ${game.maxNumber}</p>
+                <p>Максимальное количество попыток: ${game.maxAttempts}</p>
+                <p>Результат: ${game.isWon ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ'}</p>
+                <p>Количество попыток: ${game.attemptsCount}</p>
+            </div>
+            <div class="replay-attempts">
+                <h4>Ход игры:</h4>
+                <div id="replay-attempts-list">
+        `;
+
+        attempts.forEach((attempt, index) => {
+            let resultText = '';
+            switch (attempt.result) {
+                case 'win':
+                    resultText = 'ПОБЕДА! Число угадано!';
+                    break;
+                case 'greater':
+                    resultText = 'Загаданное число БОЛЬШЕ';
+                    break;
+                case 'less':
+                    resultText = 'Загаданное число МЕНЬШЕ';
+                    break;
+            }
+
+            html += `
+                <div class="attempt-item replay-item" data-attempt-index="${index}" style="display: none;">
+                    Попытка ${attempt.attemptNumber}: ${attempt.guess} - ${resultText}
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+            <div class="replay-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="replay-progress"></div>
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = html;
+    }
+
+    static showReplayAttempt(attemptIndex) {
+        const attemptElement = document.querySelector(`[data-attempt-index="${attemptIndex}"]`);
+        if (attemptElement) {
+            attemptElement.style.display = 'block';
+            attemptElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        const totalAttempts = document.querySelectorAll('.replay-item').length;
+        const progress = ((attemptIndex + 1) / totalAttempts) * 100;
+        const progressFill = document.getElementById('replay-progress');
+        if (progressFill) {
+            progressFill.style.width = `${progress}%`;
+        }
+    }
+
+    static setupReplayControls(onPause, onResume, onStop) {
+        document.getElementById('pause-replay').addEventListener('click', onPause);
+        document.getElementById('resume-replay').addEventListener('click', onResume);
+        document.getElementById('stop-replay').addEventListener('click', onStop);
+        document.getElementById('back-to-menu-from-replay').addEventListener('click', onStop);
+    }
+
+    static setReplayPaused(isPaused) {
+        const pauseBtn = document.getElementById('pause-replay');
+        const resumeBtn = document.getElementById('resume-replay');
+
+        if (isPaused) {
+            pauseBtn.style.display = 'none';
+            resumeBtn.style.display = 'inline-block';
+        } else {
+            pauseBtn.style.display = 'inline-block';
+            resumeBtn.style.display = 'none';
+        }
     }
 }

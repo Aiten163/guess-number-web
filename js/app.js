@@ -2,6 +2,9 @@ class App {
     constructor() {
         this.currentGame = null;
         this.database = new Database();
+        this.replayInterval = null;
+        this.currentReplayIndex = 0;
+        this.isReplayPaused = false;
         this.init();
     }
 
@@ -51,21 +54,33 @@ class App {
             this.showMainMenu();
         });
 
+        document.getElementById('back-to-menu-from-replay').addEventListener('click', () => {
+            this.stopReplay();
+            this.showMainMenu();
+        });
+
+        View.setupReplayControls(
+            () => this.pauseReplay(),
+            () => this.resumeReplay(),
+            () => this.stopReplay()
+        );
+
+        document.addEventListener('click', (e) => {
+            const gameItem = e.target.closest('.game-item.clickable');
+            if (gameItem) {
+                const gameId = parseInt(gameItem.getAttribute('data-game-id'));
+                console.log('Клик по игре:', gameId);
+                this.showGameReplay(gameId);
+            }
+        });
+
         View.setupTabs();
 
         document.querySelectorAll('.tab-btn').forEach(button => {
-            button.addEventListener('click', async () => {
-                const tab = button.getAttribute('data-tab');
+            button.addEventListener('click', async (e) => {
+                const tab = e.target.getAttribute('data-tab');
                 await this.loadTabContent(tab);
             });
-        });
-
-        document.addEventListener('click', (e) => {
-            const gameItem = e.target.closest('.game-item');
-            if (gameItem) {
-                const gameId = gameItem.getAttribute('data-game-id');
-                this.showGameReplay(gameId);
-            }
         });
     }
 
@@ -91,11 +106,70 @@ class App {
     async showGameReplay(gameId) {
         try {
             const game = await this.database.getGameById(gameId);
+            if (!game) {
+                View.showError('Игра не найдена');
+                return;
+            }
+
+            if (!game.isCompleted) {
+                View.showError('Эта игра еще не завершена');
+                return;
+            }
+
             const attempts = await this.database.getGameAttempts(gameId);
+
             View.showReplay(game, attempts);
+            View.showReplayScreen();
+
+            this.startReplay(attempts);
         } catch (error) {
             View.showError('Ошибка при загрузке игры: ' + error.message);
         }
+    }
+
+    startReplay(attempts) {
+        this.stopReplay();
+
+        this.currentReplayIndex = 0;
+        this.isReplayPaused = false;
+        View.setReplayPaused(false);
+
+        console.log('Запуск воспроизведения, всего попыток:', attempts.length);
+
+        if (attempts.length > 0) {
+            View.showReplayAttempt(this.currentReplayIndex);
+            this.currentReplayIndex++;
+        }
+
+        this.replayInterval = setInterval(() => {
+            if (!this.isReplayPaused && this.currentReplayIndex < attempts.length) {
+                View.showReplayAttempt(this.currentReplayIndex);
+                this.currentReplayIndex++;
+
+                if (this.currentReplayIndex >= attempts.length) {
+                    setTimeout(() => this.stopReplay(), 1000);
+                }
+            }
+        }, 1200);
+    }
+
+    pauseReplay() {
+        this.isReplayPaused = true;
+        View.setReplayPaused(true);
+    }
+
+    resumeReplay() {
+        this.isReplayPaused = false;
+        View.setReplayPaused(false);
+    }
+
+    stopReplay() {
+        if (this.replayInterval) {
+            clearInterval(this.replayInterval);
+            this.replayInterval = null;
+        }
+        this.isReplayPaused = false;
+        this.currentReplayIndex = 0;
     }
 
     async startNewGame() {
@@ -171,11 +245,11 @@ class App {
                     break;
                 case 'won':
                     games = await this.database.getWonGames();
-                    View.showWonGames(games);
+                    View.showGamesList(games);
                     break;
                 case 'lost':
                     games = await this.database.getLostGames();
-                    View.showLostGames(games);
+                    View.showGamesList(games);
                     break;
                 case 'stats':
                     const stats = await this.database.getPlayerStats();

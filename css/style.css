@@ -396,3 +396,137 @@ body {
 .history-actions {
     text-align: center;
 }
+.replay-container {
+    max-height: 60vh;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.replay-info {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.replay-info h3 {
+    margin: 0 0 10px 0;
+    color: var(--text-color);
+}
+
+.replay-info p {
+    margin: 5px 0;
+    color: var(--text-secondary);
+}
+
+.replay-attempts {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.replay-item {
+    padding: 10px;
+    margin: 5px 0;
+    background: var(--bg-color);
+    border-radius: 6px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.replay-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.replay-progress {
+    margin: 20px 0;
+}
+
+.replay-progress .progress-bar {
+    height: 8px;
+    background: var(--border-color);
+}
+
+.replay-progress .progress-fill {
+    height: 100%;
+    background: var(--success-color);
+    transition: width 0.3s ease;
+}
+
+.game-item.clickable {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.game-item.clickable:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.game-item.clickable:active {
+    transform: translateY(0);
+}
+
+/* Стили для статусов игр */
+.game-item.won {
+    border-left: 4px solid var(--success-color);
+}
+
+.game-item.lost {
+    border-left: 4px solid var(--error-color);
+}
+
+.game-item.in-progress {
+    border-left: 4px solid var(--warning-color);
+}
+/* Добавьте в css/style.css */
+
+.game-item.clickable {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 8px;
+    background: var(--card-bg);
+}
+
+.game-item.clickable:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.game-item.clickable:active {
+    transform: translateY(0);
+}
+
+/* Стили для статусов игр */
+.game-item.won {
+    border-left: 4px solid var(--success-color);
+}
+
+.game-item.lost {
+    border-left: 4px solid var(--error-color);
+}
+
+.game-item.in-progress {
+    border-left: 4px solid var(--warning-color);
+    opacity: 0.7;
+}
+
+.game-item.in-progress.clickable {
+    cursor: not-allowed;
+}
+
+.game-item.in-progress.clickable:hover {
+    transform: none;
+    border-color: transparent;
+    box-shadow: none;
+}

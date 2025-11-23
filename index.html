@@ -137,10 +137,32 @@
                     </button>
                 </div>
             </div>
+            <div id="replay-screen" class="screen">
+                <div class="screen-header">
+                    <h2>Повтор игры</h2>
+                </div>
+
+                <div id="replay-content" class="replay-container">
+
+                </div>
+
+                <div class="replay-controls">
+                    <button id="pause-replay" class="btn btn-secondary">Пауза</button>
+                    <button id="resume-replay" class="btn btn-secondary" style="display: none;">Продолжить</button>
+                    <button id="stop-replay" class="btn btn-primary">Завершить</button>
+                </div>
+
+                <div class="history-actions">
+                    <button id="back-to-menu-from-replay" class="btn btn-secondary">
+                        В меню
+                    </button>
+                </div>
+            </div>
         </main>
     </div>
 </div>
 
+<script src="https://unpkg.com/idb@7/build/umd.js"></script>
 <script src="js/Database.js"></script>
 <script src="js/Game.js"></script>
 <script src="js/View.js"></script>
